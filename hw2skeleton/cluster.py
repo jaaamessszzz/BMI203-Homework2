@@ -5,6 +5,7 @@ import prody as pd
 import numpy as np
 from .utils import ClusterPartition
 import pandas as pd
+import pprint
 
 def compute_similarity(site_a, site_b):
     """
@@ -86,11 +87,6 @@ def compute_similarity(site_a, site_b):
     """
 
     similarity = np.linalg.norm(site_a - site_b)
-
-    print(site_a)
-    print(site_b)
-    print(similarity)
-
     return similarity
 
 def construct_active_site_matrix(active_sites):
@@ -237,7 +233,7 @@ def cluster_hierarchically(active_sites):
     I need a bunch of different matricies to record data for this clustering... following scikitlearn:
     1. A distance matrix (implemented as pandas dataframe... clunky but it will work)
     2. A 4 x N matrix to record which clusters I join together, their distance, and how many members are in the cluster
-    3. ????
+    3. A dict that records cluster members in lists
 
     I need to update the distance matrix every time I create a new cluster. One of the reasons I opted to go with the
     pandas dataframe in lieu of a numpy array is that I can use index labels instead of needing to keep track of indices
@@ -250,6 +246,15 @@ def cluster_hierarchically(active_sites):
     Output: a list of clusterings
             (each clustering is a list of lists of Sequence objects)
     """
+    ########################
+    # Initialize variables #
+    ########################
+
+    dendrogram_list = []
+    cluster_counter = 0
+
+    # Keep track of cluster members in dict of lists
+    cluster_dict = {active_site.name: [active_site] for active_site in active_sites}
 
     # Calculate all pairwise distances between active sites
     # Distance matrix represented in a Pandas Dataframe
@@ -260,14 +265,73 @@ def cluster_hierarchically(active_sites):
             df.ix[active_site_inner, active_site_outer] = compute_similarity(active_sites[active_site_outer].shell_matrix, active_sites[active_site_inner].shell_matrix)
 
     # Output for debugging
-    df.to_csv("FUCK.csv")
+    df.to_csv("ASDF.csv")
 
-    # Find the minimum distance between two clusters (initially singletons)
+    ###################################
+    # Perform Hierarchical Clustering #
+    ###################################
 
-    # Combine the two clusters, record in 4 x N matrix
+    while len(cluster_dict) > 1:
 
+        # Find the minimum distance between two clusters (initially singletons) currently in play
+        # row_values = df.min(axis=0) # Row-wise, outputs column index of the cluster with the minimum distance from the row index
+        row_min_indicies = df.min(axis=0) # Row-wise, outputs minimum distance from the row index PDB
+        min_cluster_a = row_min_indicies.idxmin(axis=0) # Outputs index of cluster with minimum distance in
+        min_cluster_b_series = df.idxmin(axis=0) # Row-wise, outputs column index of the cluster with the minimum distance from the row index
 
+        first_cluster = min_cluster_a
+        second_cluster = min_cluster_b_series[first_cluster]
 
+        print(first_cluster) # ID of first cluster
+        print(second_cluster) # ID of scecond cluster
+        print(df.ix[second_cluster, first_cluster]) # [row, column], distance
 
+        # Combine the two clusters
+        # Record new cluster members in cluster_dict
+        # Remove old clusters from cluster dict
+
+        new_cluster_index = "Cluster-{}".format(cluster_counter)
+        cluster_dict[new_cluster_index] = list(cluster_dict[first_cluster] + cluster_dict[second_cluster])
+        cluster_dict.pop(first_cluster)
+        cluster_dict.pop(second_cluster)
+
+        # Record new cluster in 4 x N matrix
+        # [Cluster 1, cluster 2, cluster centroid distance, number of members in new cluster]
+        dendrogram_list.append([first_cluster,
+                                second_cluster,
+                                df.ix[second_cluster, first_cluster],
+                                len(cluster_dict[new_cluster_index])
+                                ]
+                               )
+
+        # Calculate centroid of new cluster,
+        new_cluster_centroid = np.mean(np.array([active_site.shell_matrix for active_site in cluster_dict[new_cluster_index]]), axis=0)
+
+        # Delete old clusters from distance matrix
+        # Add new cluster to distance matrix and calcuate new distances
+        df = df.drop([first_cluster, second_cluster])
+        df = df.drop([first_cluster, second_cluster], axis=1)
+
+        new_distances_list = []
+        distance_series_index = []
+
+        for index, values in df.iterrows():
+            current_cluster_centroid = np.mean(np.array([active_site.shell_matrix for active_site in cluster_dict[index]]), axis=0)
+            new_distances_list.append(compute_similarity(new_cluster_centroid, current_cluster_centroid))
+            distance_series_index.append(index)
+
+        new_cluster_series_column = pd.Series(new_distances_list, name=new_cluster_index, index=distance_series_index)
+        new_cluster_series_row = pd.Series(name=new_cluster_index, index=distance_series_index)
+
+        df = pd.concat([df, new_cluster_series_column], axis=1)
+        df = df.append(new_cluster_series_row)
+
+        cluster_counter += 1
+
+        # Terminate when df is 1 x 1 or when cluster_dict contains only one entry
+
+    df.to_csv("ASDF_2.csv")
+    pprint.pprint(dendrogram_list)
+    print(cluster_dict)
 
     return []
