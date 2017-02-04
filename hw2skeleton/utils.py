@@ -35,11 +35,7 @@ class ActiveSite:
     def __init__(self, name):
         self.name = name
         self.residues = []
-        self.resnums = 0
-        self.atom_C = 0
-        self.atom_O = 0
-        self.atom_N = 0
-        self.atom_S = 0
+        self.shell_matrix = None
 
     # Overload the __repr__ operator to make printing simpler.
     def __repr__(self):
@@ -48,8 +44,10 @@ class ActiveSite:
 # ClusterPartition class for keeping track of cluster centers and cluster members
 class ClusterPartition(object):
     def __init__(self):
+        self.culter_ID = None
         self.cluster_center = None
-        self.cluster_members = []
+        self.cluster_members_current = []
+        self.cluster_members_previous = []
 
     # Calculate the cluster center based on class members and save to cluster_center
     def calculate_center(self):
