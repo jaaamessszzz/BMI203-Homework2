@@ -48,7 +48,3 @@ class ClusterPartition(object):
         self.cluster_center = None
         self.cluster_members_current = []
         self.cluster_members_previous = []
-
-    # Calculate the cluster center based on class members and save to cluster_center
-    def calculate_center(self):
-        pass

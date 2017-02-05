@@ -3,8 +3,14 @@ from .utils import Atom, Residue, ActiveSite
 # JAMES
 import prody as pd
 import numpy as np
-from .utils import ClusterPartition
+from scipy.cluster import hierarchy
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import collections
+from .utils import ClusterPartition
+from.io import write_hierarchical_clustering
 import pprint
 
 def compute_similarity(site_a, site_b):
@@ -206,11 +212,6 @@ def cluster_by_partitioning(active_sites, cluster_number):
         for center in current_clusters:
             center.cluster_center = np.mean(np.array([active_site.shell_matrix for active_site in center.cluster_members_current]), axis=0)
 
-            # print("cluster_members_previous")
-            # print(center.cluster_members_previous)
-            # print("cluster_members_current")
-            # print(center.cluster_members_current)
-
             # Update Break condition
             if center.cluster_members_previous == center.cluster_members_current:
                 stop_counter += 1
@@ -218,19 +219,29 @@ def cluster_by_partitioning(active_sites, cluster_number):
 
             center.cluster_members_previous = center.cluster_members_current
 
+        iter_count += 1
+
         # Break Condition
         if stop_counter == len(current_clusters):
             stop = True
 
-    print("Termination criteria reached after {} iterations".format(stop))
+    print("Termination criteria reached after {} iterations".format(iter_count))
 
-    return [cluster.cluster_members_current for cluster in current_clusters]
+    return_clusters = []
 
-def cluster_hierarchically(active_sites):
+    for cluster in current_clusters:
+        current_cluster = [site.name for site in cluster.cluster_members_current]
+        return_clusters.append(current_cluster)
+
+    pprint.pprint(return_clusters)
+
+    return return_clusters
+
+def cluster_hierarchically(active_sites, number_of_clusters):
     """
     Cluster the given set of ActiveSite instances using a hierarchical algorithm.
 
-    I need a bunch of different matricies to record data for this clustering... following scikitlearn:
+    I need a bunch of different matricies to record data for this clustering:
     1. A distance matrix (implemented as pandas dataframe... clunky but it will work)
     2. A 4 x N matrix to record which clusters I join together, their distance, and how many members are in the cluster
     3. A dict that records cluster members in lists
@@ -239,10 +250,19 @@ def cluster_hierarchically(active_sites):
     pandas dataframe in lieu of a numpy array is that I can use index labels instead of needing to keep track of indices
     every time I update the matrix where things will move around.
 
-    I am recording cluster joinings in a 4 x N matrix so that I can use the scikitlearn dendrogram at the end of this to
+    I am recording cluster joinings in a 4 x N matrix so that I can use the scipy dendrogram at the end of this to
     evaluate my clusterings
 
-    Input: a list of ActiveSite instances
+    I am using centroid linkaging to evaluate my cluster distances as it is intermediate between single linkage (which
+    produces drawn out clusters) and complete linkage (which forms compact cluster). Centroid linkaging is also
+    relatively easy to implement, especially since I do something similar for my K-means clustering. where I calcualte
+    cluster centroids.
+
+
+    Input:
+    a list of ActiveSite instances
+    number_of_clusters: Number of desired clusters as inferred from inspection of dendrogram and elbow chart
+
     Output: a list of clusterings
             (each clustering is a list of lists of Sequence objects)
     """
@@ -251,25 +271,32 @@ def cluster_hierarchically(active_sites):
     ########################
 
     dendrogram_list = []
-    cluster_counter = 0
+    cluster_index = 0
+    cluster_dict = {}
+    clusters_record = {}
+    cluster_indicies_dict = collections.OrderedDict()
 
     # Keep track of cluster members in dict of lists
-    cluster_dict = {active_site.name: [active_site] for active_site in active_sites}
+    # Create dict linking numerical indices to cluster names
+    # Keep a record of all clusters created to retrieve at the end
+    for active_site in active_sites:
+        cluster_dict[active_site.name] = [active_site]
+        clusters_record[cluster_index] = [active_site]
+        cluster_indicies_dict[active_site.name] = cluster_index
+        cluster_index += 1
 
     # Calculate all pairwise distances between active sites
     # Distance matrix represented in a Pandas Dataframe
-    PDBs = [active_site.name for active_site in active_sites]
-    df = pd.DataFrame(index=PDBs, columns=PDBs)
-    for active_site_outer in range(len(active_sites)):
-        for active_site_inner in range(len(active_sites[:active_site_outer])):
-            df.ix[active_site_inner, active_site_outer] = compute_similarity(active_sites[active_site_outer].shell_matrix, active_sites[active_site_inner].shell_matrix)
+    df = _calculate_pairwise_distances(active_sites)
 
     # Output for debugging
-    df.to_csv("ASDF.csv")
+    df.to_csv("_calculate_pairwise_distances.csv")
 
     ###################################
     # Perform Hierarchical Clustering #
     ###################################
+
+    # Terminate when cluster_dict contains only one entry
 
     while len(cluster_dict) > 1:
 
@@ -282,26 +309,31 @@ def cluster_hierarchically(active_sites):
         first_cluster = min_cluster_a
         second_cluster = min_cluster_b_series[first_cluster]
 
-        print(first_cluster) # ID of first cluster
-        print(second_cluster) # ID of scecond cluster
-        print(df.ix[second_cluster, first_cluster]) # [row, column], distance
+        # print(first_cluster) # ID of first cluster
+        # print(second_cluster) # ID of scecond cluster
+        # print(df.ix[second_cluster, first_cluster]) # [row, column], distance
 
         # Combine the two clusters
         # Record new cluster members in cluster_dict
-        # Remove old clusters from cluster dict
-
-        new_cluster_index = "Cluster-{}".format(cluster_counter)
+        new_cluster_index = cluster_index
         cluster_dict[new_cluster_index] = list(cluster_dict[first_cluster] + cluster_dict[second_cluster])
+        clusters_record[new_cluster_index] = cluster_dict[new_cluster_index]
+
+        # Record new cluster name to cluster index
+        cluster_indicies_dict[new_cluster_index] = cluster_index
+        # cluster_index += 1
+
+        # Remove old clusters from cluster dict
         cluster_dict.pop(first_cluster)
         cluster_dict.pop(second_cluster)
 
         # Record new cluster in 4 x N matrix
         # [Cluster 1, cluster 2, cluster centroid distance, number of members in new cluster]
-        dendrogram_list.append([first_cluster,
-                                second_cluster,
+        dendrogram_list.append((cluster_indicies_dict[first_cluster],
+                                cluster_indicies_dict[second_cluster],
                                 df.ix[second_cluster, first_cluster],
                                 len(cluster_dict[new_cluster_index])
-                                ]
+                                )
                                )
 
         # Calculate centroid of new cluster,
@@ -326,12 +358,202 @@ def cluster_hierarchically(active_sites):
         df = pd.concat([df, new_cluster_series_column], axis=1)
         df = df.append(new_cluster_series_row)
 
-        cluster_counter += 1
+        cluster_index += 1
 
-        # Terminate when df is 1 x 1 or when cluster_dict contains only one entry
+    _plot_elbow_chart(dendrogram_list)
+    all_my_clusters = _plot_dendrogram(dendrogram_list, active_sites, cluster_indicies_dict)
 
-    df.to_csv("ASDF_2.csv")
-    pprint.pprint(dendrogram_list)
-    print(cluster_dict)
+    # Return clusters based on user input
+    # User input *should* be informed by inspection of dendrogram and elbow chart
+    # clusters = 4 for the active site dataset, as jumps increase from an average of ~10 to 15.43 -> 16.77 -> 35.23
+    cluster_set = set()
+    for join in dendrogram_list[ -(number_of_clusters - 1):]:
+        cluster_set.add(join[0])
+        cluster_set.add(join[1])
 
-    return []
+    # N number of initial clusters
+    # N - 1 of clusters made during clustering
+    number_of_total_clusters = len(active_sites) * 2 - 1
+    clusters_to_exclude = set(range(number_of_total_clusters - number_of_clusters + 1, number_of_total_clusters - 1, 1))
+    clusters_to_return = cluster_set ^ clusters_to_exclude
+
+    return_list_of_clusters = []
+    for return_cluster in clusters_to_return:
+        cluster_members = [cluster_member.name for cluster_member in clusters_record[return_cluster]]
+        return_list_of_clusters.append(cluster_members)
+
+    write_hierarchical_clustering("All_hierarchical_clusters.csv", clusters_record)
+
+    return return_list_of_clusters
+
+def _calculate_pairwise_distances(active_sites):
+    """
+    Calculates all pairwise distances between active sites
+
+    Parameters
+    ----------
+    active_sites - list of ActiveSite instances
+
+    Returns
+    -------
+    df - Pandas Dataframe containing condensed distance matrix
+    """
+
+
+    PDBs = [active_site.name for active_site in active_sites]
+    df = pd.DataFrame(index=PDBs, columns=PDBs)
+    for active_site_outer in range(len(active_sites)):
+        for active_site_inner in range(len(active_sites[:active_site_outer])):
+            df.ix[active_site_inner, active_site_outer] = compute_similarity(
+                active_sites[active_site_outer].shell_matrix, active_sites[active_site_inner].shell_matrix)
+
+    return df
+
+def _plot_elbow_chart(dendrogram_list):
+    """
+    Plots an elbow chart with jump distances and acceleration
+
+    Parameters
+    ----------
+    dendrogram_list
+
+    Returns
+    -------
+
+    """
+    sns.set_style("whitegrid")
+    sns.despine()
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    cluster_jumps = [joining[2] for joining in reversed(dendrogram_list[-10:])]
+    acceleration = np.diff(cluster_jumps, 2)
+    steps = range(1, len(cluster_jumps) + 1)
+
+    ax = plt.plot(steps, cluster_jumps)
+    ax = plt.plot(steps[1:-1], acceleration)
+
+    fig.savefig("JamesLucas_BMI203_HW2-Elbow.pdf", dpi=600, bbox_inches="tight")
+
+def _plot_dendrogram(dendrogram_list, active_sites, cluster_indicies_dict):
+    """
+    Plots a dendrogram from the hierarchical clustering
+
+    Parameters
+    ----------
+    dendrogram_list
+    active_sites
+    cluster_indicies_dict
+
+    Returns
+    -------
+    """
+    sns.set_style("white")
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    adsf_double = np.array(dendrogram_list).astype("double")
+    dendrogram_labels = [key for key in cluster_indicies_dict][:len(active_sites)]
+
+    dn1 = hierarchy.dendrogram(adsf_double,
+                               ax=ax,
+                               above_threshold_color='y',
+                               distance_sort=True,
+                               orientation='left',
+                               labels=dendrogram_labels
+                               )
+
+    fig.savefig("JamesLucas_BMI203_HW2-Dendrogram.pdf", dpi=600, bbox_inches="tight")
+
+    return dn1
+
+def evaluate_clusters_internally(clusterings, active_sites):
+    """
+    Implementing the Silhouette Index/Coefficient to determine the internal quality of my clusters
+    http://www.cs.kent.edu/~jin/DM08/ClusterValidation.pdf
+
+    Parameters
+    ----------
+    clusterings - List of lists containing PDB names
+    active_sites - List of ActiveSite instances
+
+    Returns
+    -------
+    None
+    """
+
+    # Initialize things
+    df = _calculate_pairwise_distances(active_sites)
+    silhouette_scores = []
+
+    # Endless nested for loops...
+
+    # For each active site in clusterings, calculate:
+    # 1. Average distance of points within cluster (average_intra_cluster_distance)
+    # 2. Average distance to another cluster (average_inter_cluster_distances)
+    # 3. Silhouette coefficient ((average_inter_cluster_distance - average_intra_cluster_distance) / max(average_intra_cluster_distance, average_inter_cluster_distance))
+    # Clustering_outer = internal cluster
+    # clustering_inner = neighbor clusters
+
+    # For each cluster...
+    for index, clustering_outer in enumerate(clusterings):
+
+        average_inter_cluster_distances = []
+
+        # Iterate through all other clusters
+        for same, clustering_inner in enumerate(clusterings):
+
+            # Calculate average distance between all points in clustering_outer and clustering_inner
+            if index != same:
+
+                inter_cluster_distances = []
+
+                for active_site_a in clustering_outer:
+                    for active_site_b in clustering_inner:
+                        if active_site_b > active_site_a:
+                            inter_cluster_distances.append(df.ix[active_site_a, active_site_b]) # [row, column], distance
+                        else:
+                            inter_cluster_distances.append(df.ix[active_site_b, active_site_a]) # [row, column], distance
+
+                average_inter_cluster_distances.append(sum(inter_cluster_distances) / len(inter_cluster_distances))
+
+            # Calculate average intra-cluster distances
+            else:
+
+                intra_cluster_distances = []
+
+                for offset, active_site_a in enumerate(clustering_outer):
+
+                    for active_site_b in clustering_outer[:offset]:
+                        if active_site_b > active_site_a:
+                            intra_cluster_distances.append(df.ix[active_site_a, active_site_b])  # [row, column], distance
+                        else:
+                            intra_cluster_distances.append(df.ix[active_site_b, active_site_a])  # [row, column], distance
+
+                average_intra_cluster_distance = sum(intra_cluster_distances) / len(intra_cluster_distances)
+
+                print(average_intra_cluster_distance)
+
+        # Calculate Silhouette scores for each (clustering_outer, clustering_inner) pair
+        print(average_inter_cluster_distances)
+
+        average_inter_cluster_distance = min(average_inter_cluster_distances)
+        silhouette_scores.append((average_inter_cluster_distance - average_intra_cluster_distance) / max(average_intra_cluster_distance, average_inter_cluster_distance))
+
+    print(silhouette_scores)
+    final_silhouette_score = sum(silhouette_scores) / len(silhouette_scores)
+
+    print(final_silhouette_score)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

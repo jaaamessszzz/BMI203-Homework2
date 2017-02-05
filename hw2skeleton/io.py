@@ -3,7 +3,8 @@ import os
 from .utils import Atom, Residue, ActiveSite
 
 # JAMES
-import prody as pd
+import prody as pdy
+import pandas as pd
 import os
 
 def read_active_sites(dir):
@@ -72,44 +73,57 @@ def read_active_site(filepath):
 
     return active_site
 
+def write_hierarchical_clustering(filename, clusters):
+    """
+    Outputs all hierarchical clusters created during clustering as a csv, where each column in a cluster
+    This will include only non-singleton clusters
+
+    Parameters
+    ----------
+    filename - filename from command line
+    clusters - clusters_record OrderedDict
+
+    Returns
+    -------
+    None
+    """
+
+    df = pd.DataFrame()
+    for cluster in clusters:
+        if len(clusters[cluster]) != 1:
+            print(cluster)
+            cluster_column = pd.Series(clusters[cluster], name=cluster)
+            df = pd.concat([df, cluster_column], axis=1)
+
+    df.to_csv(filename)
+    print("It's dangerous to go alone! Take this: {}".format(filename))
+
 
 def write_clustering(filename, clusters):
     """
-    Write the clustered ActiveSite instances out to a file.
+    Outputs the final clusters created using a clustering algorithm as a csv, where each column in a cluster
 
-    Input: a filename and a clustering of ActiveSite instances
-    Output: none
+    Parameters
+    ----------
+    filename - filename from command line
+    clusters - list of lists
+
+    Returns
+    -------
+    None
     """
 
-    out = open(filename, 'w')
+    df = pd.DataFrame()
+    cluster_count = 1
 
-    for i in range(len(clusters)):
-        out.write("\nCluster %d\n--------------\n" % i)
-        for j in range(len(clusters[i])):
-            out.write("%s\n" % clusters[i][j])
+    for cluster in clusters:
+        cluster_column = pd.Series(cluster, name="Cluster-{}".format(cluster_count))
+        df = pd.concat([df, cluster_column], axis=1, ignore_index=True)
+        cluster_count += 1
 
-    out.close()
+    df.to_csv(filename)
+    print("I made dis: {}".format(filename))
 
-
-def write_mult_clusterings(filename, clusterings):
-    """
-    Write a series of clusterings of ActiveSite instances out to a file.
-
-    Input: a filename and a list of clusterings of ActiveSite instances
-    Output: none
-    """
-
-    out = open(filename, 'w')
-
-    for i in range(len(clusterings)):
-        clusters = clusterings[i]
-
-        for j in range(len(clusters)):
-            out.write("\nCluster %d\n------------\n" % j)
-            for k in range(len(clusters[j])):
-                out.write("%s\n" % clusters[j][k])
-
-    out.close()
 
 def prody_import(pdb_directory):
     """
@@ -123,8 +137,8 @@ def prody_import(pdb_directory):
         if pdb_file.lower().endswith(".pdb"):
 
             # Take the first chain of each PDB and name it after the PBD file
-            current_pdb = pd.parsePDB(os.path.join(pdb_directory, pdb_file))
-            hv = pd.HierView(current_pdb)
+            current_pdb = pdy.parsePDB(os.path.join(pdb_directory, pdb_file))
+            hv = pdy.HierView(current_pdb)
 
             active_site = ActiveSite(pdb_file.split('.')[0])
             active_site.residues = list(hv)[0]
