@@ -35,4 +35,4 @@ def test_atoms(filename, residue_number, atoms, xs, ys, zs):
 
     assert [atom.getName() for atom in residue] == atoms
 
-    fnp.testing.assert_allclose([atom.getCoords() for atom in residue], list((zip(xs, ys, zs))))
+    np.testing.assert_allclose([atom.getCoords() for atom in residue], list((zip(xs, ys, zs))))
