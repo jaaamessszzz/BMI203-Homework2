@@ -59,7 +59,7 @@ def test_evaluate_clusters_internally():
     prody_active_sites = []
 
     for site in sites:
-        prody_active_sites.append(io.prody_import(os.path.join('./data', "%i.pdb"%site)))
+        prody_active_sites.append(io.prody_import(os.path.join('./data', "{}.pdb".format(site))))
     test_clusters = [['276', '1806'], ['41719', '41729']]
 
     print(sites)
