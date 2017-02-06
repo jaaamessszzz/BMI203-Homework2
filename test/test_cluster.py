@@ -15,7 +15,7 @@ def test_similarity():
     print(cluster.compute_similarity(activesite_a.shell_matrix, activesite_b.shell_matrix))
 
     # update this assertion
-    assert cluster.compute_similarity(activesite_a, activesite_b) == 21.4242852856
+    assert cluster.compute_similarity(activesite_a.shell_matrix, activesite_b.shell_matrix) == 21.4242852856
 
 def test_partition_clustering():
     # tractable subset
@@ -43,7 +43,7 @@ def test_hierarchical_clustering():
     active_sites = []
     for id in pdb_ids:
         filepath = os.path.join("./data", "%i.pdb"%id)
-        active_sites.append(io.read_active_site(filepath))
+        active_sites.append(io.prody_import(filepath))
 
     clusterings = cluster.cluster_hierarchically(active_sites, 3)
 
