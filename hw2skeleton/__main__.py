@@ -12,7 +12,7 @@ if len(sys.argv) < 5:
     sys.exit(0)
 
 prody_active_sites = prody_import(sys.argv[2])
-number = int(sys.argv[3])
+number = int(sys.argv[3])tcl
 
 # Choose clustering algorithm
 if sys.argv[1][0:2] == '-P':
