@@ -54,9 +54,15 @@ def test_hierarchical_clustering():
     # update this assertion
     assert clusterings == [['276'], ['4629'], ['10701']]
 
-def test_evaluate_clusters_internally(clusterings, active_sites):
+def test_evaluate_clusters_internally():
+    sites = [['276.pdb', '1806.pdb', '41719.pdb', '41729.pdb']]
+    prody_active_sites = []
+
+    for site in sites:
+        prody_active_sites.append(io.prody_import(os.path.join('./data', site)))
+
     test_clusters = [['276', '1806'], ['41719', '41729']]
-    score = cluster.evaluate_clusters_internally(clusterings, active_sites)
+    score = cluster.evaluate_clusters_internally(test_clusters, prody_active_sites)
 
     print(score)
     assert score == 0.454018769612
