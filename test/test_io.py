@@ -27,7 +27,7 @@ def test_atoms(filename, residue_number, atoms, xs, ys, zs):
 
     activesite = io.prody_import(filepath)
 
-    residue = activesite.residues[:1][0]
+    residue = activesite.residues[55]
 
     assert [atom.getName() for atom in residue.atoms] == atoms
     assert [atom.getCoords() for atom in residue.atoms] == list(zip(xs, ys, zs))

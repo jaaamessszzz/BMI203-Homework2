@@ -15,7 +15,7 @@ def test_similarity():
     print(cluster.compute_similarity(activesite_a.shell_matrix, activesite_b.shell_matrix))
 
     # update this assertion
-    assert cluster.compute_similarity(activesite_a.shell_matrix, activesite_b.shell_matrix) in [21.4242852855, 21.4242852856] # ...rounding
+    assert cluster.compute_similarity(activesite_a.shell_matrix, activesite_b.shell_matrix) == 21.42428528562855
 
 def test_partition_clustering():
     # tractable subset
