@@ -55,7 +55,7 @@ def test_hierarchical_clustering():
     assert clusterings == [['276'], ['4629'], ['10701']]
 
 def test_evaluate_clusters_internally():
-    sites = [['276.pdb', '1806.pdb', '41719.pdb', '41729.pdb']]
+    sites = ['276.pdb', '1806.pdb', '41719.pdb', '41729.pdb']
     prody_active_sites = []
 
     for site in sites:
