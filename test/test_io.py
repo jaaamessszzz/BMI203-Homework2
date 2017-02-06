@@ -29,5 +29,5 @@ def test_atoms(filename, residue_number, atoms, xs, ys, zs):
 
     residue = activesite.residues[55]
 
-    assert [atom.getName() for atom in residue.atoms] == atoms
-    assert [atom.getCoords() for atom in residue.atoms] == list(zip(xs, ys, zs))
+    assert [atom.getName() for atom in residue] == atoms
+    assert [atom.getCoords() for atom in residue] == list(zip(xs, ys, zs))
