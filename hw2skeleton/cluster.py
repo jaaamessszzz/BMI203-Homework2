@@ -96,64 +96,6 @@ def compute_similarity(site_a, site_b):
     similarity = np.linalg.norm(site_a - site_b)
     return similarity
 
-def construct_active_site_matrix(active_sites):
-    """
-    This function calculates the atom count matrix for each active site.
-
-    To calculate the matrix:
-    1. The centroid of the active site is calculated
-    2. Calcualte the distance of each atom from the centroid
-    3. Populate the dataframe by step size and atom type
-    4. Assign DataFrame as numpy matrix to active_site.shell_matrix
-
-    Parameters
-    ----------
-    active_sites: list of active site objects
-
-    Returns
-    -------
-    None
-    """
-    # Settings!
-    number_of_shells = 20
-    step_size = 0.2
-
-
-    for active_site in active_sites:
-
-        # df index = step // step_size
-        steps = [np.arange(0, number_of_shells, 1)]
-        df = pd.DataFrame(np.zeros((number_of_shells, 4)), index=steps, columns=['C', 'O', 'N', 'S'])
-
-        # Calculate centroid
-        active_site_coords = active_site.residues.getCoords()
-
-        length = active_site_coords.shape[0]
-        sum_x = np.sum(active_site_coords[:, 0])
-        sum_y = np.sum(active_site_coords[:, 1])
-        sum_z = np.sum(active_site_coords[:, 2])
-
-        active_site_center = np.array([sum_x/length, sum_y/length, sum_z/length])
-
-        # Populate dataframe with atom types and distances
-        # Step size in cartesian space... not sure how that translates to Angstroms
-        for residue in active_site.residues:
-            for atom in residue:
-
-                distance = np.linalg.norm(atom.getCoords() - active_site_center)
-
-                if distance // step_size >= number_of_shells - 1:
-                    shell = number_of_shells - 1
-                else:
-                    shell = distance // step_size
-
-                # Save distance in matrix if Atom type is recognized
-                # Some of the PDBs still have hydrogens in them...
-                if atom.getName()[0] in "CONS":
-                    df.ix[shell, atom.getName()[0]] += 1
-
-        active_site.shell_matrix = np.asmatrix(df.values)
-
 
 def cluster_by_partitioning(active_sites, cluster_number):
     """

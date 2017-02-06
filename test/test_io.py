@@ -11,8 +11,8 @@ def test_residues(filename, names, numbers):
 
     activesite = io.read_active_site(filepath)
 
-    assert [residue.type for residue in activesite.residues] == names
-    assert [residue.number for residue in activesite.residues] == numbers
+    assert [residue.getResname() for residue in activesite.residues] == names
+    assert [residue.getResnum() for residue in activesite.residues] == numbers
 
 
 @pytest.mark.parametrize("filename,residue_number,atoms,xs,ys,zs", [
@@ -29,5 +29,5 @@ def test_atoms(filename, residue_number, atoms, xs, ys, zs):
 
     residue = activesite.residues[residue_number]
 
-    assert [atom.type for atom in residue.atoms] == atoms
-    assert [atom.coords for atom in residue.atoms] == list(zip(xs, ys, zs))
+    assert [atom.getName() for atom in residue.atoms] == atoms
+    assert [atom.getCoords() for atom in residue.atoms] == list(zip(xs, ys, zs))

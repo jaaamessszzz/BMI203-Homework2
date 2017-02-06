@@ -3,14 +3,21 @@ from hw2skeleton import io
 import os
 
 def test_similarity():
-    filename_a = os.path.join("data", "276.pdb")
-    filename_b = os.path.join("data", "4629.pdb")
+    filename_a = os.path.join("./data", "276.pdb")
+    filename_b = os.path.join("./data", "4629.pdb")
 
-    activesite_a = io.read_active_site(filename_a)
-    activesite_b = io.read_active_site(filename_b)
+    activesite_a = io.prody_import(filename_a)
+    activesite_b = io.prody_import(filename_b)
+
+    cluster.construct_active_site_matrix([activesite_a, activesite_b])
+
+    print(activesite_a)
+    print(activesite_b)
+
+    print(cluster.compute_similarity(activesite_a.shell_matrix, activesite_b.shell_matrix))
 
     # update this assertion
-    assert cluster.compute_similarity(activesite_a, activesite_b) == 0.0
+    assert cluster.compute_similarity(activesite_a, activesite_b) == 21.4242852856
 
 def test_partition_clustering():
     # tractable subset
@@ -18,11 +25,18 @@ def test_partition_clustering():
 
     active_sites = []
     for id in pdb_ids:
-        filepath = os.path.join("data", "%i.pdb"%id)
-        active_sites.append(io.read_active_site(filepath))
+        filepath = os.path.join("./data", "%i.pdb" % id)
+        active_sites.append(io.prody_import(filepath))
+
+    clusterings = cluster.cluster_by_partitioning(active_sites, 3)
+
+    # Organize clusterings since they get spit out randomly...
+    numbers = sorted([int(out[0]) for out in clusterings])
+    test_clusterings = [[str(label)] for label in numbers]
 
     # update this assertion
-    assert cluster.cluster_by_partitioning(active_sites) == []
+    assert test_clusterings == [['276'], ['4629'], ['10701']]
+
 
 def test_hierarchical_clustering():
     # tractable subset
@@ -30,8 +44,8 @@ def test_hierarchical_clustering():
 
     active_sites = []
     for id in pdb_ids:
-        filepath = os.path.join("data", "%i.pdb"%id)
+        filepath = os.path.join("./data", "%i.pdb"%id)
         active_sites.append(io.read_active_site(filepath))
 
     # update this assertion
-    assert cluster.cluster_hierarchically(active_sites) == []
+    assert cluster.cluster_hierarchically(active_sites, 3) == [['276'], ['4629'], ['10701']]
