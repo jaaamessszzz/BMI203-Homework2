@@ -53,3 +53,10 @@ def test_hierarchical_clustering():
 
     # update this assertion
     assert clusterings == [['276'], ['4629'], ['10701']]
+
+def test_evaluate_clusters_internally(clusterings, active_sites):
+    test_clusters = [['276', '1806'], ['41719', '41729']]
+    score = cluster.evaluate_clusters_internally(clusterings, active_sites)
+
+    print(score)
+    assert score == 0.454018769612
