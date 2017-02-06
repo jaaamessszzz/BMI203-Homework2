@@ -33,4 +33,4 @@ def test_atoms(filename, residue_number, atoms, xs, ys, zs):
     print([atom.getCoords() for atom in residue])
 
     assert [atom.getName() for atom in residue] == atoms
-    assert [atom.getCoords() for atom in residue].any() == list(zip(xs, ys, zs)).any()
+    assert set([atom.getCoords() for atom in residue]) == set(zip(xs, ys, zs))
