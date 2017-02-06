@@ -9,8 +9,6 @@ def test_similarity():
     activesite_a = io.prody_import(filename_a)
     activesite_b = io.prody_import(filename_b)
 
-    cluster.construct_active_site_matrix([activesite_a, activesite_b])
-
     print(activesite_a)
     print(activesite_b)
 
@@ -47,5 +45,11 @@ def test_hierarchical_clustering():
         filepath = os.path.join("./data", "%i.pdb"%id)
         active_sites.append(io.read_active_site(filepath))
 
+    clusterings = cluster.cluster_hierarchically(active_sites, 3)
+
+    # Organize clusterings since they get spit out randomly...
+    numbers = sorted([int(out[0]) for out in clusterings])
+    test_clusterings = [[str(label)] for label in numbers]
+
     # update this assertion
-    assert cluster.cluster_hierarchically(active_sites, 3) == [['276'], ['4629'], ['10701']]
+    assert clusterings == [['276'], ['4629'], ['10701']]
