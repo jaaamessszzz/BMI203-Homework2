@@ -61,6 +61,9 @@ def test_evaluate_clusters_internally():
     for site in sites:
         prody_active_sites.append(io.prody_import(os.path.join('./data', site)))
 
+    print(sites)
+    print(test_clusters)
+
     test_clusters = [['276', '1806'], ['41719', '41729']]
     score = cluster.evaluate_clusters_internally(test_clusters, prody_active_sites)
 
