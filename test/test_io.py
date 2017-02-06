@@ -1,4 +1,5 @@
 from hw2skeleton import io
+import numpy as np
 import pytest
 import os
 
