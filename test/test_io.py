@@ -35,5 +35,5 @@ def test_atoms(filename, residue_number, atoms, xs, ys, zs):
 
     assert [atom.getName() for atom in residue] == atoms
 
-    for a, b in zip([atom.getCoords() for atom in residue], np.asarray((zip(xs, ys, zs)))):
+    for a, b in zip([atom.getCoords() for atom in residue], list((zip(xs, ys, zs)))):
         assert a == b
