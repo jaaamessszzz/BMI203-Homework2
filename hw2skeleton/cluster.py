@@ -3,6 +3,7 @@ from .utils import Atom, Residue, ActiveSite
 # JAMES
 import prody as pd
 import numpy as np
+import scipy as sp
 from scipy.cluster import hierarchy
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -101,7 +102,9 @@ def construct_active_site_matrix(active_sites):
 
     To calculate the matrix:
     1. The centroid of the active site is calculated
-
+    2. Calcualte the distance of each atom from the centroid
+    3. Populate the dataframe by step size and atom type
+    4. Assign DataFrame as numpy matrix to active_site.shell_matrix
 
     Parameters
     ----------
@@ -109,13 +112,18 @@ def construct_active_site_matrix(active_sites):
 
     Returns
     -------
-
+    None
     """
+    # Settings!
+    number_of_shells = 20
+    step_size = 0.2
+
+
     for active_site in active_sites:
 
-        # df index = step // 0.5
-        steps = [np.arange(0, 21, 1)]
-        df = pd.DataFrame(np.zeros((21, 4)), index=steps, columns=['C', 'O', 'N', 'S'])
+        # df index = step // step_size
+        steps = [np.arange(0, number_of_shells, 1)]
+        df = pd.DataFrame(np.zeros((number_of_shells, 4)), index=steps, columns=['C', 'O', 'N', 'S'])
 
         # Calculate centroid
         active_site_coords = active_site.residues.getCoords()
@@ -128,14 +136,16 @@ def construct_active_site_matrix(active_sites):
         active_site_center = np.array([sum_x/length, sum_y/length, sum_z/length])
 
         # Populate dataframe with atom types and distances
-        # Step size of 0.5 in cartesian space... not sure how that translates to Angstroms
+        # Step size in cartesian space... not sure how that translates to Angstroms
         for residue in active_site.residues:
             for atom in residue:
+
                 distance = np.linalg.norm(atom.getCoords() - active_site_center)
-                if distance // 0.5 >= 20:
-                    shell = 20
+
+                if distance // step_size >= number_of_shells - 1:
+                    shell = number_of_shells - 1
                 else:
-                    shell = distance // 0.5
+                    shell = distance // step_size
 
                 # Save distance in matrix if Atom type is recognized
                 # Some of the PDBs still have hydrogens in them...
@@ -164,8 +174,10 @@ def cluster_by_partitioning(active_sites, cluster_number):
     # Implement Clustering by Partitioning #
     ########################################
 
-    # Select random active site coordinates to serve as initial cluster centers
     cluster_centers = []
+
+    # Select random active site coordinates to serve as initial cluster centers
+
     while len(cluster_centers) != cluster_number:
         active_site_pick = active_sites[np.random.randint(0, len(active_sites))]
         if active_site_pick not in cluster_centers:
@@ -180,7 +192,6 @@ def cluster_by_partitioning(active_sites, cluster_number):
         ID += 1
         K_mean.cluster_center = cluster_center.shell_matrix
         current_clusters.append(K_mean)
-
 
     # Actually start clustering things
     stop = False
@@ -199,7 +210,7 @@ def cluster_by_partitioning(active_sites, cluster_number):
             calculated_distances = {center.cluster_ID: compute_similarity(active_site.shell_matrix, center.cluster_center) for center in current_clusters}
 
             min_distance_cluster = min(calculated_distances, key=(lambda key: calculated_distances[key]))
-            print("Min distance: {} - {}".format(min_distance_cluster, calculated_distances[min_distance_cluster]))
+            # print("Min distance: {} - {}".format(min_distance_cluster, calculated_distances[min_distance_cluster]))
 
             for center in current_clusters:
                 if center.cluster_ID == min_distance_cluster:
@@ -219,8 +230,6 @@ def cluster_by_partitioning(active_sites, cluster_number):
 
             center.cluster_members_previous = center.cluster_members_current
 
-        iter_count += 1
-
         # Break Condition
         if stop_counter == len(current_clusters):
             stop = True
@@ -233,9 +242,8 @@ def cluster_by_partitioning(active_sites, cluster_number):
         current_cluster = [site.name for site in cluster.cluster_members_current]
         return_clusters.append(current_cluster)
 
-    pprint.pprint(return_clusters)
-
     return return_clusters
+
 
 def cluster_hierarchically(active_sites, number_of_clusters):
     """
@@ -255,16 +263,14 @@ def cluster_hierarchically(active_sites, number_of_clusters):
 
     I am using centroid linkaging to evaluate my cluster distances as it is intermediate between single linkage (which
     produces drawn out clusters) and complete linkage (which forms compact cluster). Centroid linkaging is also
-    relatively easy to implement, especially since I do something similar for my K-means clustering. where I calcualte
+    relatively easy to implement, especially since I do something similar for my K-means clustering where I calcualte
     cluster centroids.
-
 
     Input:
     a list of ActiveSite instances
     number_of_clusters: Number of desired clusters as inferred from inspection of dendrogram and elbow chart
 
     Output: a list of clusterings
-            (each clustering is a list of lists of Sequence objects)
     """
     ########################
     # Initialize variables #
@@ -361,7 +367,7 @@ def cluster_hierarchically(active_sites, number_of_clusters):
         cluster_index += 1
 
     _plot_elbow_chart(dendrogram_list)
-    all_my_clusters = _plot_dendrogram(dendrogram_list, active_sites, cluster_indicies_dict)
+    _plot_dendrogram(dendrogram_list, active_sites, cluster_indicies_dict)
 
     # Return clusters based on user input
     # User input *should* be informed by inspection of dendrogram and elbow chart
@@ -386,6 +392,7 @@ def cluster_hierarchically(active_sites, number_of_clusters):
 
     return return_list_of_clusters
 
+
 def _calculate_pairwise_distances(active_sites):
     """
     Calculates all pairwise distances between active sites
@@ -408,6 +415,7 @@ def _calculate_pairwise_distances(active_sites):
                 active_sites[active_site_outer].shell_matrix, active_sites[active_site_inner].shell_matrix)
 
     return df
+
 
 def _plot_elbow_chart(dendrogram_list):
     """
@@ -433,6 +441,7 @@ def _plot_elbow_chart(dendrogram_list):
     ax = plt.plot(steps[1:-1], acceleration)
 
     fig.savefig("JamesLucas_BMI203_HW2-Elbow.pdf", dpi=600, bbox_inches="tight")
+
 
 def _plot_dendrogram(dendrogram_list, active_sites, cluster_indicies_dict):
     """
@@ -464,6 +473,7 @@ def _plot_dendrogram(dendrogram_list, active_sites, cluster_indicies_dict):
     fig.savefig("JamesLucas_BMI203_HW2-Dendrogram.pdf", dpi=600, bbox_inches="tight")
 
     return dn1
+
 
 def evaluate_clusters_internally(clusterings, active_sites):
     """
@@ -528,30 +538,65 @@ def evaluate_clusters_internally(clusterings, active_sites):
                         else:
                             intra_cluster_distances.append(df.ix[active_site_b, active_site_a])  # [row, column], distance
 
-                average_intra_cluster_distance = sum(intra_cluster_distances) / len(intra_cluster_distances)
-
-                print(average_intra_cluster_distance)
+                if len(intra_cluster_distances) != 0:
+                    average_intra_cluster_distance = sum(intra_cluster_distances) / len(intra_cluster_distances)
 
         # Calculate Silhouette scores for each (clustering_outer, clustering_inner) pair
-        print(average_inter_cluster_distances)
-
         average_inter_cluster_distance = min(average_inter_cluster_distances)
         silhouette_scores.append((average_inter_cluster_distance - average_intra_cluster_distance) / max(average_intra_cluster_distance, average_inter_cluster_distance))
 
-    print(silhouette_scores)
     final_silhouette_score = sum(silhouette_scores) / len(silhouette_scores)
 
     print(final_silhouette_score)
 
+def compare_clusters(part_clusterings, hier_clusterings):
+    """
+    Calculate RAND score between clustering techniques
+    Inspiration: http://stats.stackexchange.com/questions/89030/rand-index-calculation
 
+    Parameters
+    ----------
+    part_clusterings
+    hier_clusterings
 
+    Returns
+    -------
+    rand_index
+    """
 
+    assert len(part_clusterings) == len(hier_clusterings), "Techniques need to output the same number of clusters!"
 
+    # Generate co-occurrence matrix
+    pre_matrix = []
 
+    for p_index, p_cluster in enumerate(part_clusterings):
+        current_row = []
+        for h_index, h_cluster in enumerate(hier_clusterings):
+            current_row.append(len(set(h_cluster) ^ set(p_cluster)))
+        pre_matrix.append(current_row)
 
+    co_occurance_matrix = np.asmatrix(pre_matrix)
 
+    # Calculate TP, TN, FP, and FN
 
+    column_sums = np.sum(co_occurance_matrix, axis = 0)
+    tp_fp = np.sum([sp.misc.comb(value, 2) for value in column_sums])
 
+    row_sums = np.sum(co_occurance_matrix, axis = 1)
+    tp_fn = np.sum([sp.misc.comb(value, 2) for value in row_sums])
+
+    tp_choose_two_matrix = sp.misc.comb(co_occurance_matrix, 2)
+    tp = np.sum(tp_choose_two_matrix)
+
+    fp = tp_fp - tp
+    fn = tp_fn - tp
+
+    co_occurance_matrix_sum = co_occurance_matrix.sum()
+    tn = sp.misc.comb(co_occurance_matrix_sum, 2) - tp - fp - fn
+
+    rand_index = (tp + tn) / (tp + tn + fp + fn)
+
+    return rand_index
 
 
 

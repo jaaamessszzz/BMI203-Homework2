@@ -1,5 +1,5 @@
 import sys
-from .cluster import cluster_by_partitioning, cluster_hierarchically, construct_active_site_matrix, evaluate_clusters_internally
+from .cluster import cluster_by_partitioning, cluster_hierarchically, construct_active_site_matrix, evaluate_clusters_internally, compare_clusters
 
 # JAMES
 import pprint
@@ -13,14 +13,6 @@ if len(sys.argv) < 5:
 # active_sites = read_active_sites(sys.argv[2])
 prody_active_sites = prody_import(sys.argv[2])
 number = int(sys.argv[3])
-
-# Development
-if sys.argv[1][0:2] == '-D':
-    for number in range(5,6):
-        construct_active_site_matrix(prody_active_sites)
-        asdf = cluster_by_partitioning(prody_active_sites, number)
-        pprint.pprint(asdf)
-        break
 
 # Choose clustering algorithm
 if sys.argv[1][0:2] == '-P':
@@ -37,3 +29,13 @@ if sys.argv[1][0:2] == '-H':
     clusterings = cluster_hierarchically(prody_active_sites, number)
     write_clustering(sys.argv[4], clusterings)
     evaluate_clusters_internally(clusterings, prody_active_sites)
+
+if sys.argv[1][0:2] == '-C':
+    print("Comparing clustering methods using RAND index")
+    construct_active_site_matrix(prody_active_sites)
+    hier_clusterings = cluster_hierarchically(prody_active_sites, number)
+    part_clusterings = cluster_by_partitioning(prody_active_sites, number)
+    rand_index = compare_clusters(part_clusterings, hier_clusterings)
+    print("Calculated RAND index for your two clusters: {}".format(rand_index))
+
+

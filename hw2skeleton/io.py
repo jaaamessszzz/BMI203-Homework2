@@ -91,7 +91,6 @@ def write_hierarchical_clustering(filename, clusters):
     df = pd.DataFrame()
     for cluster in clusters:
         if len(clusters[cluster]) != 1:
-            print(cluster)
             cluster_column = pd.Series(clusters[cluster], name=cluster)
             df = pd.concat([df, cluster_column], axis=1)
 
