@@ -67,3 +67,11 @@ def test_evaluate_clusters_internally():
     score = cluster.evaluate_clusters_internally(test_clusters, prody_active_sites)
 
     np.testing.assert_equal(score, 0.45401876961188553)
+
+def test_compare_clusters():
+    cluster_a = [['a', 'a', 'a', 'a'],['b', 'b', 'b', 'b']]
+    cluster_b = [['a', 'a', 'b', 'b'],['b', 'b', 'a', 'a']]
+
+    RAND = cluster.compare_clusters(cluster_a, cluster_b)
+
+    np.testing.assert_equal(RAND, 0.3333333333333333)
