@@ -349,12 +349,15 @@ def _calculate_pairwise_distances(active_sites):
     """
 
 
-    PDBs = [active_site.name for active_site in active_sites]
+    PDBs_sorted = sorted([int(active_site.name) for active_site in active_sites])
+    PDBs = [str(name) for name in PDBs_sorted]
     df = pd.DataFrame(index=PDBs, columns=PDBs)
-    for active_site_outer in range(len(active_sites)):
-        for active_site_inner in range(len(active_sites[:active_site_outer])):
-            df.ix[active_site_inner, active_site_outer] = compute_similarity(
-                active_sites[active_site_outer].shell_matrix, active_sites[active_site_inner].shell_matrix)
+
+    for index_outer, active_site_outer in enumerate(active_sites):
+        for index_inner, active_site_inner in enumerate(active_sites):
+            if int(active_site_outer.name) >  int(active_site_inner.name):
+                df.ix[active_site_inner.name, active_site_outer.name] = compute_similarity(
+                    active_site_outer.shell_matrix, active_site_inner.shell_matrix)
 
     return df
 
