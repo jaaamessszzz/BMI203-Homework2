@@ -66,4 +66,4 @@ def test_evaluate_clusters_internally():
 
     score = cluster.evaluate_clusters_internally(test_clusters, prody_active_sites)
 
-    np.testing.assert_equal(score == 0.454018769612)
+    np.testing.assert_equal(score, 0.454018769612)
