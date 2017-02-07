@@ -62,10 +62,7 @@ def test_evaluate_clusters_internally():
         prody_active_sites.append(io.prody_import(os.path.join('./data', "{}.pdb".format(site))))
     test_clusters = [['276', '1806'], ['41719', '41729']]
 
-    print(sites)
-    print(test_clusters)
 
     score = cluster.evaluate_clusters_internally(test_clusters, prody_active_sites)
 
-    print(score)
-    assert score == 0.454018769612
+    np.testing.assert_equal(score == 0.454018769612)

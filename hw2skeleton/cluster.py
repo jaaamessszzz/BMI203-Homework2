@@ -461,10 +461,12 @@ def evaluate_clusters_internally(clusterings, active_sites):
 
                     for active_site_a in clustering_outer:
                         for active_site_b in clustering_inner:
-                            if active_site_b > active_site_a:
+                            if int(active_site_b) > int(active_site_a):
                                 inter_cluster_distances.append(df.ix[active_site_a, active_site_b]) # [row, column], distance
+
                             else:
                                 inter_cluster_distances.append(df.ix[active_site_b, active_site_a]) # [row, column], distance
+
 
                     average_inter_cluster_distances.append(sum(inter_cluster_distances) / len(inter_cluster_distances))
 
@@ -476,7 +478,7 @@ def evaluate_clusters_internally(clusterings, active_sites):
                     for offset, active_site_a in enumerate(clustering_outer):
 
                         for active_site_b in clustering_outer[:offset]:
-                            if active_site_b > active_site_a:
+                            if int(active_site_b) > int(active_site_a):
                                 intra_cluster_distances.append(df.ix[active_site_a, active_site_b])  # [row, column], distance
                             else:
                                 intra_cluster_distances.append(df.ix[active_site_b, active_site_a])  # [row, column], distance
@@ -484,8 +486,10 @@ def evaluate_clusters_internally(clusterings, active_sites):
                     if len(intra_cluster_distances) != 0:
                         average_intra_cluster_distance = sum(intra_cluster_distances) / len(intra_cluster_distances)
 
+
             # Calculate Silhouette scores for each (clustering_outer, clustering_inner) pair
             average_inter_cluster_distance = min(average_inter_cluster_distances)
+
             silhouette_scores.append((average_inter_cluster_distance - average_intra_cluster_distance) / max(average_intra_cluster_distance, average_inter_cluster_distance))
 
         else:
@@ -493,9 +497,8 @@ def evaluate_clusters_internally(clusterings, active_sites):
 
     final_silhouette_score = sum(silhouette_scores) / len(silhouette_scores)
 
-    print(final_silhouette_score)
-
     return final_silhouette_score
+
 
 def compare_clusters(part_clusterings, hier_clusterings):
     """

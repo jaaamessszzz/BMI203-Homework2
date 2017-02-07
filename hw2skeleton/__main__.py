@@ -12,15 +12,17 @@ if len(sys.argv) < 5:
     sys.exit(0)
 
 prody_active_sites = prody_import(sys.argv[2])
-number = int(sys.argv[3])tcl
+number = int(sys.argv[3])
+
 
 # Choose clustering algorithm
 if sys.argv[1][0:2] == '-P':
     print("Clustering using Partitioning method")
     clusterings = cluster_by_partitioning(prody_active_sites, number)
     write_clustering("Part", sys.argv[4], clusterings)
-    evaluate_clusters_internally(clusterings, prody_active_sites)
 
+    pprint.pprint(clusterings)
+    evaluate_clusters_internally(clusterings, prody_active_sites)
 
 if sys.argv[1][0:2] == '-H':
     print("Clustering using hierarchical method")
