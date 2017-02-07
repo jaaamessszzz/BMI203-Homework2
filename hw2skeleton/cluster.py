@@ -348,7 +348,6 @@ def _calculate_pairwise_distances(active_sites):
     df - Pandas Dataframe containing condensed distance matrix
     """
 
-
     PDBs_sorted = sorted([int(active_site.name) for active_site in active_sites])
     PDBs = [str(name) for name in PDBs_sorted]
     df = pd.DataFrame(index=PDBs, columns=PDBs)
@@ -437,6 +436,7 @@ def evaluate_clusters_internally(clusterings, active_sites):
 
     # Initialize things
     df = _calculate_pairwise_distances(active_sites)
+    df.to_csv("WAT-ASDF.csv")
     silhouette_scores = []
 
     # Endless nested for loops...
@@ -448,60 +448,71 @@ def evaluate_clusters_internally(clusterings, active_sites):
     # Clustering_outer = internal cluster
     # clustering_inner = neighbor clusters
 
-    # For each cluster...
-    for index, clustering_outer in enumerate(clusterings):
+    # For each cluster
+    for cluster in clusterings:
 
-        if len(clustering_outer) > 1:
-            average_inter_cluster_distances = []
+        # Internal silhouette score undefined for clusters containing only one member. Going on...
+        if len(cluster) > 1:
 
-            # Iterate through all other clusters
-            for same, clustering_inner in enumerate(clusterings):
+            # For each point in the current cluster
+            for active_site in cluster:
 
-                # Calculate average distance between all points in clustering_outer and clustering_inner
-                if index != same:
+                average_inter_cluster_distances = []
+                intra_cluster_distances = []
 
-                    inter_cluster_distances = []
+                # Calculate average distance between active site and other active sites for other clusters, or...
+                for inner_cluster in clusterings:
 
-                    for active_site_a in clustering_outer:
-                        for active_site_b in clustering_inner:
-                            if int(active_site_b) > int(active_site_a):
-                                inter_cluster_distances.append(df.ix[active_site_a, active_site_b]) # [row, column], distance
+                    if inner_cluster != cluster:
+
+                        inter_cluster_distances = []
+
+                        for inner_active_site in inner_cluster:
+
+                            if int(inner_active_site) > int(active_site):
+                                inter_cluster_distances.append(df.ix[active_site, inner_active_site]) # [row, column], distance
+                                # print("Inter", active_site, inner_active_site)
+                                # print(df.ix[active_site, inner_active_site])
 
                             else:
-                                inter_cluster_distances.append(df.ix[active_site_b, active_site_a]) # [row, column], distance
+                                inter_cluster_distances.append(df.ix[inner_active_site, active_site]) # [row, column], distance
+                                # print("Inter", inner_active_site, active_site)
+                                # print(df.ix[inner_active_site, active_site])
 
+                        average_inter_cluster_distances.append(sum(inter_cluster_distances)/len(inter_cluster_distances))
 
-                    average_inter_cluster_distances.append(sum(inter_cluster_distances) / len(inter_cluster_distances))
+                # ...Calculate all intra cluster distances and average
+                    else:
 
-                # Calculate average intra-cluster distances
-                else:
+                        for intra_site in cluster:
+                            if intra_site != active_site:
+                                if int(intra_site) > int(active_site):
+                                    # print("Appending to intra_cluster_distances:", df.ix[active_site, intra_site])
+                                    intra_cluster_distances.append(df.ix[active_site, intra_site])  # [row, column], distance
+                                    # print("Intra", active_site, intra_site)
+                                    # print(df.ix[active_site, intra_site])
+                                else:
+                                    # print("Appending to intra_cluster_distances:", df.ix[intra_site, active_site])
+                                    intra_cluster_distances.append(df.ix[intra_site, active_site])  # [row, column], distance
+                                    # print("Intra", intra_site, active_site)
+                                    # print(df.ix[intra_site, active_site])
 
-                    intra_cluster_distances = []
+                average_intra_cluster_distance = sum(intra_cluster_distances) / len(intra_cluster_distances)
+                min_inter_cluster_distance = min(average_inter_cluster_distances)
 
-                    for offset, active_site_a in enumerate(clustering_outer):
+                print("average_intra_cluster_distance: ", average_intra_cluster_distance)
+                print("min_inter_cluster_distance: ", min_inter_cluster_distance)
 
-                        for active_site_b in clustering_outer[:offset]:
-                            if int(active_site_b) > int(active_site_a):
-                                intra_cluster_distances.append(df.ix[active_site_a, active_site_b])  # [row, column], distance
-                            else:
-                                intra_cluster_distances.append(df.ix[active_site_b, active_site_a])  # [row, column], distance
+                silhouette_scores.append((min_inter_cluster_distance - average_intra_cluster_distance) / max(average_intra_cluster_distance, min_inter_cluster_distance))
 
-                    if len(intra_cluster_distances) != 0:
-                        average_intra_cluster_distance = sum(intra_cluster_distances) / len(intra_cluster_distances)
-
-
-            # Calculate Silhouette scores for each (clustering_outer, clustering_inner) pair
-            average_inter_cluster_distance = min(average_inter_cluster_distances)
-
-            silhouette_scores.append((average_inter_cluster_distance - average_intra_cluster_distance) / max(average_intra_cluster_distance, average_inter_cluster_distance))
-
-        else:
-            print("Internal silhouette score undefined for clusters containing only one member. Going on...")
+            print(silhouette_scores)
 
     final_silhouette_score = sum(silhouette_scores) / len(silhouette_scores)
 
-    return final_silhouette_score
+    print("Silhouette score: ", final_silhouette_score)
 
+
+    return final_silhouette_score
 
 def compare_clusters(part_clusterings, hier_clusterings):
     """
