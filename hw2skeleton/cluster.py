@@ -511,7 +511,6 @@ def evaluate_clusters_internally(clusterings, active_sites):
 
     print("Silhouette score: ", final_silhouette_score)
 
-
     return final_silhouette_score
 
 def compare_clusters(part_clusterings, hier_clusterings):

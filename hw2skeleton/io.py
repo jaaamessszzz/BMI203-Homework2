@@ -56,7 +56,7 @@ def write_clustering(clustering_type, filename, clusters):
         df = pd.concat([df, cluster_column], axis=1, ignore_index=True)
         cluster_count += 1
 
-    df.to_csv("-".join([clustering_type, filename]))
+    df.to_csv("-".join([clustering_type, filename + ".csv"]))
     print("I made dis: {}".format(filename))
 
 
